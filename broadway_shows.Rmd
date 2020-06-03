@@ -1,0 +1,98 @@
+---
+title: "Broadway Shows"
+author: "Jeffrey Brabec"
+date: "6/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidytuesdayR)
+library(tidyverse)
+library(tidytext)
+library(lubridate)
+library(scales)
+
+theme_set(theme_light())
+
+tuesdata <- tidytuesdayR::tt_load(2020, week = 18)
+
+grosses <- tuesdata$grosses
+
+```
+
+```{r}
+#Exploring Data: Hamilton
+grosses %>% 
+  filter(show == "Hamilton") %>% 
+  ggplot(aes(week_ending, weekly_gross)) + #look at average weekly ticket price as well
+  geom_line() +
+  scale_y_continuous(labels = scales::dollar)
+  expand_limits(y = 0)
+  
+grosses %>% 
+  filter(show %in% c("Hamilton", "Cats", "A Funny Thing Happened on the Way to the Forum", "The Lion King")) %>% 
+  ggplot(aes(week_ending, weekly_gross, color = show)) + #weekly gross has a periodicity to it which we can also see in cats. Lion King also has a drop around 2006/2007 which was when they moved theaters (though could be a data quality issue!!)
+  geom_line() +
+  scale_y_continuous(labels = scales::dollar)
+  expand_limits(y = 0)
+  
+grosses %>% group_by(show)
+```
+
+```{r}
+library(tidymetrics)
+hamilton_summarized <- grosses %>% 
+  filter(show %in% c("Hamilton", "Cats", 
+                     "The Lion King", "Les Miserables",
+                     "Wicked", "Phantom of the Opera")) %>% 
+  rename(date = week_ending) %>% 
+  cross_by_periods(c("month", "quarter", "year"),
+                   windows = 28) %>%   # aggregate data
+  summarize(usd_gross = sum(weekly_gross),
+            avg_ticket_price = mean(avg_ticket_price),
+            nb_seats_sold = sum(seats_sold),
+            pct_capacity = mean(pct_capacity))
+
+
+hamilton_summarized %>% 
+  ggplot(aes(date, usd_gross, color = period)) +
+  geom_line()
+
+hamilton_summarized %>% 
+  ggplot(aes(date, avg_ticket_price, color = period)) + #could also do by average ticket price replace usd with avg_ticket
+  geom_line(size = 1, alpha = .5) +
+  scale_y_continuous(label = dollar_format()) +
+  expand_limits(y = 0) +
+  labs(x = "Time",
+       y = "Average Ticket Price",
+       color = "Period")
+
+
+hamilton_summarized %>% 
+  ggplot(aes(date, pct_capacity, color = period)) + #could also do by average ticket price replace usd with avg_ticket
+  geom_line(size = 1, alpha = .5) +
+  scale_y_continuous(label = percent_format()) +
+  expand_limits(y = 0) +
+  labs(x = "Time",
+       y = "Seat Capacity",
+       color = "Period")
+```
+
+```{r}
+grosses %>% 
+  filter(show %in% c("Hamilton", "Cats", 
+                     "The Lion King", "Les Miserables",
+                     "Wicked", "The Phantom of the Opera",
+                     "The Book of Mormon")) %>% 
+  mutate(show = str_remove(show, "\\, Parts.*")) %>% 
+  rename(date = week_ending) %>% 
+  cross_by_dimensions(show) %>% 
+  cross_by_periods(c("month", "quarter", "year"),
+                   windows = 28) 
+
+```
+

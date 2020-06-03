@@ -1,0 +1,362 @@
+---
+title: "Jelles Marbel Runs"
+author: "Jeffrey Brabec"
+date: "6/2/2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(lubridate)
+library(ggbump)
+library(showtext)
+library(sysfonts)
+library(tidymodels)
+
+font_add_google("Oswald", "Oswald")
+showtext_auto()
+## ggplot theme
+theme_set(theme_void(base_family = "Oswald"))
+
+tuesdata <- tidytuesdayR::tt_load('2020-06-02')
+marbles <- tuesdata$marbles
+tuesdata
+```
+
+```{r}
+marbles %>% 
+  ggplot(aes(x = date, y = points)) +
+  geom_point(aes(color = team_name)) +
+  geom_line()
+
+
+marbles %>% 
+  ggplot(aes(marble_name, avg_time_lap)) +
+  geom_col() +
+  facet_wrap(~site) +
+  coord_flip()
+
+```
+
+```{r}
+marbles_rank <- marbles %>% 
+  select(race, marble_name, team_name, points, time_s) %>% 
+  filter(str_detect(race, "R")) %>% 
+  group_by(race, team_name) %>% 
+  summarize(points = unique(points)) %>% 
+  group_by(team_name) %>% 
+  arrange(team_name, race) %>% 
+  mutate(
+    points_sum = sum(points),
+    points_cum = cumsum(points)
+  ) %>% 
+  group_by(race) %>% 
+  arrange(-points_cum, points_sum) %>% 
+  mutate(rank = row_number()) %>% 
+  ungroup() %>% 
+  mutate(
+    race_num = as.numeric(str_remove(race, "S1R")),
+    team_name = fct_reorder(team_name, -points_sum),
+    team_abbr = case_when(
+      team_name == "Savage Speeders" ~ "SAV",
+      team_name == "Hazers" ~ "HAZ",
+      team_name == "O'rangers" ~ "ORA",
+      team_name == "Snowballs" ~ "SNO",
+      team_name == "Green Ducks" ~ "GDK",
+      team_name == "Team Galactic" ~ "TGL",
+      team_name == "Team Primary" ~ "TPR",
+      team_name == "Team Momo" ~ "TMO",
+      team_name == "Thunderbolts" ~ "TDB",
+      team_name == "Balls of Chaos" ~ "BOC",
+      team_name == "Mellow Yellow" ~ "MYL",
+      team_name == "Midnight Wisps" ~ "MNW",
+      team_name == "Rojo Rollers" ~ "RJR",
+      team_name == "Raspberry Racers" ~ "RBR",
+      team_name == "Limers" ~ "LMR",
+      team_name == "Hornets" ~ "HOR"
+    )
+  )
+```
+
+```{r}
+cols <- c(
+  "#882B1A", "#676564", "#E8751A", "#779AC4", "#646E3F",
+  "#9D49B9", "#C09F2F", "#65955B", "#284D95", "#B34525",
+  "#FCD306", "#9AD1E8", "#D44F4C", "#BB1A4E", "#A5C254", "#DED32A"
+)
+
+marbles_rank %>% 
+  ggplot(aes(x = race_num, y = rank, color = team_name, group = team_name)) +
+  annotate("text", x = 4.5, y = 13, label = "Marbula One", fontface = "bold", family = "Oswald", color = "grey18", size = 55) +
+  geom_segment(data = tibble(x = 1, xend = 8, y = 1:16),
+               aes(x = x, xend = xend,
+                   y = y, yend = y),
+               color = "grey30",
+               size = .15,
+               interit.aes = FALSE) +
+  geom_segment(aes(x = 1, xend = 1,
+                   y = 1, yend = 16),
+               color = "grey30",
+               size = .5) +
+  geom_bump(
+      smooth = 7, 
+      size = 2.2
+    ) +
+    geom_point(
+      data = marbles_rank %>% filter(race_num == 1),
+      size = 3.5
+    ) +
+    geom_point(
+      data = marbles_rank %>% filter(race_num == 8),
+      size = 5, 
+      shape = 21, 
+      fill = "black",
+      stroke = 2
+    ) +
+    geom_text(
+      data = marbles_rank %>% filter(race_num == 8),
+      aes(
+        x = 8.11,
+        label = team_abbr
+      ),
+      family = "Oswald",
+      size = 5,
+      hjust = 0
+    ) +
+    geom_text(
+      data = marbles_rank %>% filter(race_num == 8),
+      aes(
+        x = 8.48,
+        label = rank
+      ),
+      family = "Oswald",
+      size = 5,
+      hjust = 1
+    ) +
+    coord_cartesian(clip = "off") +
+    scale_x_continuous(
+      expand = c(.001, .001),
+      limits = c(1, 8.5),
+      breaks = 1:8,
+      labels = c(glue::glue("Race {1:7}"), "Finish"),
+      sec.axis = dup_axis()
+    ) +
+    scale_y_reverse(
+      expand = c(.03, .03),
+      breaks = 1:16
+    ) +
+    scale_color_manual(
+      values = cols,
+      guide = F
+    ) +
+    labs(
+      x = "Marbula 1 Season 1: Championship Ranking Over Time",
+      caption = "Visualization by Cédric Scherer  •  Data by Jelle's Marble Runs"
+    ) 
+```
+
+
+```{r}
+marbles %>% 
+  ggplot(aes(date, points, group = team_name, color = team_name, fill = team_name)) +
+  geom_point(size = 7) +
+  geom_text(data = marbles %>% filter(date == min(date)),
+            aes(x = date, label = team_name), size = 5, hjust = 1) +
+  geom_text(data = marbles %>% filter(date == max(date)),
+            aes(x = date, label = team_name), size = 5, hjust = 0) +
+  geom_bump(aes(smooth = 10), size = 1.5, lineend = "round") +
+  geom_label(data = marbles %>% filter(host == "Yes"),
+             aes(label = "Host")) +
+  geom_text(data = marbles %>% filter(host == "Yes"),
+            aes(label = "Host"),
+            color = "black") +
+  scale_color_manual(values = c(wesanderson::wes_palette("GrandBudapest2"), wesanderson::wes_palette("GrandBudapest1"), wesanderson::wes_palette("BottleRocket2"), wesanderson::wes_palette("Moonrise1"))) +
+  scale_fill_manual(values = c(wesanderson::wes_palette("GrandBudapest2"), wesanderson::wes_palette("GrandBudapest1"), wesanderson::wes_palette("BottleRocket2"), wesanderson::wes_palette("Moonrise1"))) +
+  scale_y_reverse(breaks = 1:100) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid = element_blank(),
+        panel.background = element_rect(fill = "gray60", color = "transparent"),
+        plot.background = element_rect(fill = "gray60"),
+        text = element_text(color = "white")) +
+  labs(x = NULL,
+       y = NULL,
+       title = "Marble Team Performance Over Time",
+       subtitle = "Does hosting affect performance?")
+```
+
+
+```{r}
+marbles_rank <-
+  marbles %>% 
+  dplyr::select(race, marble_name, team_name, points, time_s) %>% 
+  filter(str_detect(race, "R")) %>% 
+  group_by(race, team_name) %>% 
+  summarize(points = unique(points)) %>% 
+  group_by(team_name) %>% 
+  arrange(team_name, race) %>% 
+  mutate(
+    points_sum = sum(points),
+    points_cum = cumsum(points),
+    mean_points = mean(points)
+  ) %>%
+  group_by(race) %>% 
+  arrange(-points_cum, points_sum) %>% 
+  mutate(rank = row_number()) %>% 
+  ungroup() %>% 
+  mutate(
+    race_num = as.numeric(str_remove(race, "S1R")),
+    team_name = fct_reorder(team_name, -points_sum),
+    team_abbr = case_when(
+      team_name == "Savage Speeders" ~ "SAV",
+      team_name == "Hazers" ~ "HAZ",
+      team_name == "O'rangers" ~ "ORA",
+      team_name == "Snowballs" ~ "SNO",
+      team_name == "Green Ducks" ~ "GDK",
+      team_name == "Team Galactic" ~ "TGL",
+      team_name == "Team Primary" ~ "TPR",
+      team_name == "Team Momo" ~ "TMO",
+      team_name == "Thunderbolts" ~ "TDB",
+      team_name == "Balls of Chaos" ~ "BOC",
+      team_name == "Mellow Yellow" ~ "MYL",
+      team_name == "Midnight Wisps" ~ "MNW",
+      team_name == "Rojo Rollers" ~ "RJR",
+      team_name == "Raspberry Racers" ~ "RBR",
+      team_name == "Limers" ~ "LMR",
+      team_name == "Hornets" ~ "HOR"
+    )
+  )
+```
+
+
+```{r}
+marbles_rank %>% 
+  ggplot(aes(
+      x = race_num, 
+      y = rank, 
+      color = team_name,
+      group = team_name
+    )) +
+     annotate(
+      "text",
+      x = 4.5,
+      y = 13,
+      label = "Marbula One",
+      family = "Oswald",
+      fontface = "bold",
+      color = "grey18",
+      size = 55
+    ) +
+    geom_segment(
+      data = tibble(
+        x = 1,
+        xend = 8,
+        y = 1:16
+      ),
+      aes(
+        x = x, xend = xend,
+        y = y, yend = y
+      ),
+      color = "grey30",
+      size = .15,
+      inherit.aes = FALSE
+    ) +
+   geom_segment(
+      aes(
+        x = 1, xend = 1,
+        y = 1, yend = 16
+      ),
+      color = "grey30",
+      size = .5
+    ) +
+    geom_bump(
+      smooth = 7, 
+      size = 2.2
+    ) +
+    geom_point(
+      data = marbles_rank %>% filter(race_num == 1),
+      size = 3.5
+    ) +
+    geom_point(
+      data = marbles_rank %>% filter(race_num == 8),
+      size = 5, 
+      shape = 21, 
+      fill = "black",
+      stroke = 2
+    ) +
+    geom_text(
+      data = marbles_rank %>% filter(race_num == 8),
+      aes(
+        x = 8.11,
+        label = team_abbr
+      ),
+      family = "Oswald",
+      size = 5,
+      hjust = 0
+    ) +
+    geom_text(
+      data = marbles_rank %>% filter(race_num == 8),
+      aes(
+        x = 8.48,
+        label = rank
+      ),
+      family = "Oswald",
+      size = 5,
+      hjust = 1
+    ) +
+    coord_cartesian(clip = "off") +
+    scale_x_continuous(
+      expand = c(.001, .001),
+      limits = c(1, 8.5),
+      breaks = 1:8,
+      labels = c(glue::glue("Race {1:7}"), "Finish"),
+      sec.axis = dup_axis()
+    ) +
+    scale_y_reverse(
+      expand = c(.03, .03),
+      breaks = 1:16
+    ) +
+    scale_color_manual(
+      values = cols,
+      guide = F
+    ) +
+    labs(
+      x = "Marbula 1 Season 1: Championship Ranking Over Time",
+      caption = "Visualization by Cédric Scherer  •  Data by Jelle's Marble Runs"
+    ) 
+
+ggsave("./2020_23_MarbleRaces.pdf", 
+       width = 13, height = 6.5, device = cairo_pdf)
+```
+
+```{r}
+mean_points <- marbles %>% 
+  dplyr::select(race, marble_name, team_name, points, time_s) %>% 
+  filter(str_detect(race, "R")) %>% 
+  group_by(race, team_name) %>% 
+  summarize(points = unique(points)) %>% 
+  group_by(team_name) %>% 
+  arrange(team_name, race) %>% 
+  mutate(
+    points_sum = sum(points),
+    points_cum = cumsum(points),
+    mean_points = mean(points)
+  ) %>% 
+  group_by(team_name) %>% 
+  filter(str_detect(race, "8"))
+
+
+
+
+marble_model_df <- marbles_rank %>% 
+  filter(str_detect(race, "8"))
+
+marble_model_df %>% View()
+
+marbles_model <- lm(rank ~ mean_points + points_cum + points, marble_model_df)
+tidy(marbles_model)
+
+anova(marbles_model)
+```
+

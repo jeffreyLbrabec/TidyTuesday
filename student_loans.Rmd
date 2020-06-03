@@ -1,0 +1,39 @@
+---
+title: "Student Loans"
+author: "Jeffrey Brabec"
+date: "6/2/2020"
+output: html_document
+---
+
+```{r}
+library(tidytuesdayR)
+library(tidyverse)
+library(lubridate)
+library(scales)
+
+tuesdata <- tidytuesdayR::tt_load(2019, week = 48)
+loans <- tuesdata$loans
+```
+
+```{r}
+loans %>% 
+  group_by(year, agency_name, quarter) %>% 
+  count(wage_garnishments)
+
+#How is total student loan debt changing over time?
+loans %>% 
+  ggplot(aes(agency_name, starting)) +
+  geom_boxplot() +
+  coord_flip()
+
+loans %>% 
+  group_by(agency_name) %>%
+  filter(quarter == 1) %>% 
+  ggplot(aes(year, starting, fill = as.factor(year))) +
+  geom_col() +
+ scale_y_continuous("Starting value of loans at the beginning of each year",
+                     labels = scales::label_dollar())
+  
+  
+```
+
