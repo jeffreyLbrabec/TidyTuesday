@@ -1,0 +1,64 @@
+---
+title: "African American History"
+author: "Jeffrey Brabec"
+date: "6/24/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(ggwordcloud)
+
+tuesdata <- tidytuesdayR::tt_load(2020, week = 25)
+
+blackpast <- tuesdata$blackpast
+census <- tuesdata$census
+slave_routes <- tuesdata$slave_routes
+african_names <- tuesdata$african_names
+
+```
+
+```{r}
+blackpast %>% 
+  count(era)
+```
+
+```{r}
+slave_routes %>% 
+  count(port_origin)
+```
+
+```{r}
+census %>% 
+  count(region)
+```
+
+```{r}
+african_names %>% 
+  count(name, gender, sort = TRUE)
+
+
+name_counts <- african_names %>% 
+  count(name, gender, sort = TRUE, .drop = FALSE)
+
+
+
+name_counts %>% 
+  slice_head(n = 100) %>% 
+  filter(!is.na(gender)) %>% 
+  ggplot(aes(label = name, size = n, color = gender)) +
+  geom_text_wordcloud_area()
+
+african_names %>% 
+  filter(!is.na(gender)) %>% 
+  ggplot(aes(x = year_arrival, 
+             y = cogender, 
+             color = gender)) +
+  geom_col()
+```
+
