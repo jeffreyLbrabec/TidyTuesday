@@ -1,0 +1,41 @@
+---
+title: "Caribou Location Tracking"
+author: "Jeff Brabec"
+date: "6/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load libraries and get data}
+library(tidyverse)
+tuesdata <- tidytuesdayR::tt_load(2020, week = 26)
+
+locations <- tuesdata$locations
+individuals <- tuesdata$individuals
+```
+
+Exploring location data
+```{r}
+locations %>% 
+  count(study_site)
+
+locations %>% 
+  ggplot(aes(latitude, longitude)) +
+  geom_point(aes(color = study_site), size = 0.5) +
+  #coord_fixed(ratio = 1.5) +
+  facet_wrap(~season) +
+  labs(title = "Caribou Movements Across Seasons",
+       color = "Study Sites") +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "#CEE5CE", colour = NA),
+    strip.text = element_text(colour = "#B7A4B7", size = 18),
+      plot.title = element_text(colour = "#5B525B", size = 20, hjust = 0, lineheight = 1),
+      legend.title = element_text(colour = "#5B525B", size = 10),
+      legend.text = element_text(colour = "#5B525B", size = 8)) +
+  ggsave("caribou_movements.png")
+```
+
