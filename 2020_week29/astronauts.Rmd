@@ -1,0 +1,89 @@
+---
+title: "astronauts"
+author: "Jeff Brabec"
+date: "7/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+library(tidytext)
+library(ggforce)
+library(ggimage)
+library(scales)
+library(here)
+
+tuesdata <- tidytuesdayR::tt_load('2020-07-14')
+astronauts <- tuesdata$astronauts
+
+space_launches <- tidytuesdayR::tt_load("2019", week = 3)
+launches <- space_launches$launches
+agencies <- space_launches$agencies
+```
+
+```{r}
+space_walkers <- astronauts %>% 
+  mutate(performed_eva = ifelse(eva_hrs_mission > 0, "Space Walked", "Stayed Docked")) %>% 
+  filter(performed_eva == "Space Walked") %>% 
+  group_by(name) %>% 
+  summarize(n = n(), 
+            mean_walk = mean(eva_hrs_mission), 
+            total_eva_hrs = unique(total_eva_hrs), 
+            nationality = unique(nationality)) %>% 
+  rowwise() %>%
+	mutate(
+		a = runif(1) * 5,
+		y = list(seq(0, mean_walk, length.out = 100))
+		) %>%
+	ungroup() %>% 
+  mutate(name = fct_reorder(name, mean_walk)) %>% 
+  group_by(name) %>% 
+  mutate(walker_n = cur_group_id()) %>% 
+  ungroup() %>% 
+  slice_max(mean_walk, n = 20) %>% 
+  unnest(y)
+
+flag_points <- space_walkers %>% 
+  select(name, mean_walk, walker_n, nationality) %>% 
+  mutate(nation = ifelse(nationality == "U.S.", "um", "ru"))
+
+stars <- tibble(x = runif(100, min = -10, max = 50),
+                y = runif(100, min = 210, max = 230),
+                color = 1)
+
+logos <- tibble(us = c("http://logok.org/wp-content/uploads/2015/02/NASA-logo.png"),
+           ru = c("https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Roscosmos_logo_ru.svg/1200px-Roscosmos_logo_ru.svg.png"))
+
+space_walkers %>% 
+  unnest(y) %>% 
+  ggplot() +
+  geom_path(aes(x = y, y = walker_n + 0.1 * cos(3 * y + a), group = name), size = 1, lineend = "round", colour = "#757575", alpha = 1) +
+  geom_text(aes(x = -8, y = walker_n, label = name), colour = "#f0ece3", family = "DIN Alternate Bold", vjust = 1, lineheight = 1, size = 4, check_overlap = TRUE) +
+  geom_flag(data = flag_points, aes(x = mean_walk, y = walker_n, image = nation)) +
+  expand_limits(x = -16) +
+  geom_point(data = stars, aes(x = x, y = y, alpha = 0.005), color = "white") +
+  geom_image(x = 40, y = 220, data = logos, aes(image = us), size = 0.4, by  = "width") +
+  geom_image(x = 34, y = 214, data = logos, aes(image = ru), size = 0.35, by  = "width") +
+  scale_size_identity() +
+  labs(title = "Astronauts who Space-Walked the Most",
+       subtitle = str_wrap("While American astronaut Andrew Morgan average the most time on a space walk, Anatoly Solovyev has totaled the most hours spent on a space walk (78.80)."),
+       caption = "Source: Mariya Stavnichuk and Tatsuya Corlett | Graphic: Jeff Brabec") +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "#191919", color = NA),
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, size = 23, color = "white"),
+    plot.subtitle = element_text(hjust = 0.5, size = 10, color = "white"),
+    plot.margin = margin(20, 20, 20, 20),
+    plot.caption = element_text(color = "white")
+  ) +
+  ggsave(filename = here("2020_week29", "plots", "spacewalking.png"))
+
+
+```
+
