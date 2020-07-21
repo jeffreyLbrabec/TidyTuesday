@@ -1,0 +1,48 @@
+---
+title: "Australian Animals"
+author: "Jeff Brabec"
+date: "7/21/2020"
+output: html_document
+---
+
+```{r setup}
+library(tidyverse)
+library(tidytuesdayR)
+library(here)
+library(wesanderson)
+
+tuesdata <- tidytuesdayR::tt_load(2020, week = 30)
+
+animal_outcomes <- tuesdata$animal_outcomes
+```
+
+```{r}
+colors <- c(wes_palettes$IsleofDogs1, wes_palettes$IsleofDogs2)
+
+animal_outcomes %>% 
+  filter(animal_type != "Horses", animal_type != "Livestock", animal_type != "Other Animals") %>% 
+  ggplot(aes(x = year, y = Total, color = outcome, group = outcome)) +
+  geom_point() + 
+  geom_line() +
+  facet_wrap(~animal_type, nrow = 1, ncol = 3) +
+  scale_color_manual(values=colors) +
+  theme_minimal() +
+  labs(x = "Year",
+       y = "Total",
+       color = "Outcome",
+       title = "Animal Outcomes in Australia from 1999 to 2018",
+       subtitle = str_wrap("Overall outcomes seem to be improving for animals in Australia thanks to the efforts of the RSPCA. Euthanasia has decreased for Dogs and Cats since ~2010 but has inceased for wild animals. The RSPCA makes every effort to release them back to the wild, but for some animals that are too seriously injured, euthanasia is employed to humanely ease their suffering."),
+       caption = "Source: RSPCA | Graphic: Jeff Brabec") +
+  theme(plot.background = element_rect(fill = "#94B1D3", color = NA),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(color = "#000000"),
+        plot.title = element_text(hjust = 0.5, size = 20, color = "#000000"),
+        plot.subtitle = element_text(hjust = 0.5, size = 10, color = "#000000"),
+        legend.position = "bottom",
+        plot.caption = element_text(color = "#000000")
+  ) +
+  ggsave(filename = here("2020_week30/animal_outcomes.png"))
+  
+```
+

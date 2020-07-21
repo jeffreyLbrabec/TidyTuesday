@@ -1,0 +1,63 @@
+---
+title: "X-men!"
+author: "Jeff Brabec"
+date: "7/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(tidymodels)
+tuesdata <- tidytuesdayR::tt_load(2020, week = 27)
+```
+
+```{r}
+character_visualization <- tuesdata$character_visualization 
+character_visualization %>% 
+  count(character, costume,  sort = TRUE)
+
+characters <- tuesdata$characters 
+characters %>% 
+  group_by(issue) %>% 
+  count(hand_holding_with_which_character, sort = TRUE)
+
+comic_bechdel <- tuesdata$comic_bechdel 
+
+comic_bechdel %>% 
+  count(series)
+
+xmen_bechdel <- tuesdata$xmen_bechdel
+
+xmen_bechdel %>% 
+  count(notes)
+
+
+```
+I want to examine the relationship between different activities in the Claremont run of the Uncanny Xmen and passing the bechdel test.
+```{r}
+claremont_run_bechdel <- xmen_bechdel %>% inner_join(characters, by = "issue") %>%
+  mutate(pass_bechdel = ifelse(pass_bechdel == "yes", "Pass", "Fail")) %>% 
+  select(-notes, -reprint) %>% 
+  mutate(across(everything(), replace_na, 0))
+
+claremont_run_bechdel %>% 
+  count(pass_bechdel)
+
+claremont_run_bechdel_recipe <- 
+  recipe(pass_bechdel ~ shower_number_of_panels_shower_lasts, data = claremont_run_bechdel)
+
+claremont_bechdel_model <- 
+  linear_reg() %>% 
+  set_engine("lm")
+  
+claremont_bechdel_fit <- 
+  claremont_bechdel_model %>% 
+  fit(pass_bechdel ~ shower_number_of_panels_shower_lasts, data = claremont_run_bechdel)
+  
+```
+
