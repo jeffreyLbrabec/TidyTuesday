@@ -1,0 +1,71 @@
+---
+title: "Palmer Penguins"
+author: "Jeff Brabec"
+date: "7/28/2020"
+output: html_document
+---
+
+```{r setup}
+library(tidyverse)
+library(tidymodels)
+library(here)
+library(extrafont)
+tuesdata <- tidytuesdayR::tt_load(2020, week = 31)
+penguins <- tuesdata$penguins %>% 
+  drop_na()
+
+```
+
+```{r}
+penguin_points <- penguins %>% 
+  select(-species, -island, -sex, -year, -bill_length_mm, -bill_depth_mm)
+
+kclust <- kmeans(penguin_points, centers = 3)
+summary(kclust)
+
+penguins_scored <- augment(kclust, penguins)
+```
+
+
+```{r}
+kraken_pal <- c(
+  dark = "#001628",
+  dark_blue = "#44748c",
+  medium_blue = "#639FB6",
+  light_blue = "#96D8D8",
+  red = "#C8102E",
+  off_white = "#F5F5F5"
+)
+
+penguins_scored %>% 
+  rename(cluster = .cluster) %>% 
+  ggplot(aes(body_mass_g, flipper_length_mm, color = species, shape = cluster)) + 
+  geom_point() +
+  labs(x = "Body Mass (g)",
+       y = "Flipper Length (mm)",
+       color = "Species",
+       shape = "K-Means Cluster",
+       title = "K-Means Clustered Penguins",
+       subtitle = str_wrap("K-means clustering using body mass and flipper length alone was not great at seperating the three grups. Using all of the numerical data would probably improve the accuracy of the clustering."),
+       caption = "#TidyTuesday | Graphic: @JiffyTweeting Source: Horst AM, Hill AP, Gorman KB (2020). palmerpenguins: Palmer Archipelago (Antarctica) penguin data. R package version 0.1.0. https://allisonhorst.github.io/palmerpenguins/") +
+  scale_color_manual(values = c("#44748c", "#639FB6", "#96D8D8")) +
+  theme_minimal() +
+  guides(shape = FALSE) +
+  theme(
+    plot.background = element_rect("#001628"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(color = "#F5F5F5"),
+    axis.title = element_text(color = "#F5F5F5"),
+    legend.text = element_text(color = "#F5F5F5"),
+    legend.title = element_text(color = "#F5F5F5"),
+    legend.position = "bottom",
+    plot.caption = element_text(color = "#F5F5F5", size = 5),
+    plot.title = element_text(hjust = 0.5, color = "#F5F5F5", size = 20),
+    plot.subtitle = element_text(hjust = 0.5, color = "#F5F5F5")
+  )
+
+ggsave(filename = file.path(here("2020_week31/making_of"), paste0("202007d_penguins-", format(Sys.time(), "%Y%m%d_%H%M%S"), ".png")), 
+       dpi = 400, width = 10, height = 10)
+```
+
