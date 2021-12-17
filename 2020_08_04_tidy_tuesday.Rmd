@@ -1,0 +1,125 @@
+---
+title: "TidyTemplate"
+date: 2020-09-28
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(janitor)
+library(tidytuesdayR)
+library(scales)
+library(tidytext)
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2020-08-04")
+energy_types <- tt$energy_types %>% 
+  pivot_longer(cols = starts_with("2"),
+               names_to = "year",
+               values_to = "gwh") %>% 
+  mutate(year = as.integer(year)) %>% 
+  replace_na(list(country_name = "United Kingdom"))
+country_totals <- tt$country_totals
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+countries <- energy_types %>% 
+   mutate(across(country_name, replace_na, "UK")) %>%
+  count(country_name) %>% 
+  dplyr::select(country_name)
+
+eu_countries <- map_data("world", region = countries$country_name)
+
+# Compute the centroid as the mean longitude and lattitude
+# Used as label coordinate for country's names
+region_lab_data <- eu_countries %>%
+  group_by(region) %>%
+  summarise(long = mean(long), lat = mean(lat))
+
+ggplot(eu_countries, aes(x = long, y = lat)) +
+  geom_polygon(aes( group = group, fill = region))+
+  geom_text(aes(label = region), data = region_lab_data,  size = 3, hjust = 0.5)+
+  scale_fill_viridis_d()+
+  theme_void()+
+  theme(legend.position = "none")
+
+
+
+
+energy_types %>% 
+  filter(level == "Level 1",
+         year == 2018,
+         gwh > 0,
+         type != "Other"
+         ) %>% 
+  group_by(type) %>% 
+  mutate(country_name = fct_lump(country_name, 10, w = gwh)) %>% 
+  mutate(country_name = reorder_within(country_name, gwh, type, fun = sum),
+         type = fct_reorder(type, -gwh, sum)) %>% 
+  ggplot(aes(gwh, country_name)) +
+  geom_col() +
+  facet_wrap(~type, scales = "free") +
+  scale_y_reordered() +
+  scale_x_continuous(labels = comma)
+
+
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "My TidyTuesday Plot.png",
+  device = "png")
+
+```
